@@ -7,18 +7,7 @@ spec:
       command:
         - /busybox/cat
       tty: true
-      volumeMounts:
-        - name: kaniko-secret
-          mountPath: /secret
-      env:
-        - name: GOOGLE_APPLICATION_CREDENTIALS
-          value: /secret/credentials.json
       resources:
         limits:
           cpu: "1000m"
           memory: "1024Mi"
-  volumes:
-    - name: kaniko-secret
-      secret:
-        secretName: registry-credentials
-
