@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+    - name: build
+      image: europe-west1-docker.pkg.dev/libon-build/images/freeswitch-build-tools:1.0
+      command:
+        - cat
+      tty: true
+      resources:
+        limits:
+          cpu: "1000m"
+          memory: "2048Mi"
