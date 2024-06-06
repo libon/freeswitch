@@ -97,5 +97,64 @@ pipeline {
                 milestone ordinal: 30, label: 'Building image'
             }
         }
+        stage('Release') {
+            when {
+                branch 'v1.10'
+            }
+
+            steps {
+                script {
+                    releaseVersion = input(message: 'Should we release?', parameters: [
+                        string(description: 'What is the next version', name: 'RELEASE_VERSION')
+                    ])
+                }
+
+                podTemplate(
+                        yamlMergeStrategy: merge(),
+                        containers: [
+                                containerTemplate(name: 'gcloud',
+                                                  image: 'google/cloud-sdk:473.0.0-alpine',
+                                                  command: 'cat',
+                                                  ttyEnabled: true,
+                                                  resourceRequestCpu: '100m',
+                                                  resourceLimitMemory: '256Mi')
+                        ]) {
+                    node(POD_LABEL) {
+                        ansiColor('xterm') {
+                            script {
+                                def scmVars = checkout scm
+                                gitCommit = scmVars.GIT_COMMIT
+                                try {
+                                    milestone ordinal: 300, label: 'Release'
+                                    githubTag(repository: "libon/freeswitch",
+                                              commit: gitCommit,
+                                              tag: releaseVersion,
+                                              credentialsId: 'github-app')
+                                    container('gcloud') {
+                                        sh """
+                                            gcloud artifacts docker tags add europe-west1-docker.pkg.dev/libon-build/images/freeswitch:${env.FS_VERSION} \
+                                                                             europe-west1-docker.pkg.dev/libon-build/images/freeswitch:${releaseVersion} --project libon-build
+                                        """
+                                    }
+
+                                } catch (e) {
+                                    slackSend channel: '#team-voice',
+                                              color: 'danger',
+                                              message: "Release of FreeSWITCH\nFailure after ${currentBuild.durationString} (<${env.BUILD_URL}|Open>)"
+                                    throw e
+                                }
+                            }
+                        }
+                    }
+                }
+                script {
+                    currentBuild.description = "Release ${releaseVersion}"
+                    slackSend channel: '#team-voice',
+                              color: 'good',
+                              message: "Release of FreeSWITCH ${releaseVersion}\nSuccess after ${currentBuild.durationString} (<${env.BUILD_URL}|Open>)"
+                }
+            }
+
+        }
     }
 }
