@@ -9,7 +9,7 @@ RUN wget --http-user=signalwire --http-password=$SIGNALWIRE_TOKEN -O /usr/share/
 RUN echo "machine freeswitch.signalwire.com login signalwire password $SIGNALWIRE_TOKEN" > /etc/apt/auth.conf && chmod 600 /etc/apt/auth.conf
 RUN echo "deb [signed-by=/usr/share/keyrings/signalwire-freeswitch-repo.gpg] https://freeswitch.signalwire.com/repo/deb/debian-release/ `lsb_release -sc` main" > /etc/apt/sources.list.d/freeswitch.list
 
-RUN apt-get update && apt-get install -y libfreetype6 libodbc2 libsofia-sip-ua0 libopus0 libpcre3 libsofia-sip-ua0 libspandsp3 libspeexdsp1 libtpl0 speex
+RUN apt-get update && apt-get install -y libfreetype6 libodbc2 libsofia-sip-ua0 libopus0 libpcre3 libsndfile1 libsofia-sip-ua0 libspandsp3 libspeexdsp1 libtpl0 speex
 COPY freeswitch*.tar.gz /tmp/
 RUN tar -zxvf /tmp/freeswitch*.tar.gz -C /
 
