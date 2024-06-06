@@ -726,7 +726,7 @@ static switch_status_t sofia_answer_channel(switch_core_session_t *session)
 
 		if (switch_channel_test_flag(tech_pvt->channel, CF_PROXY_MEDIA)) {
 			sofia_media_activate_rtp(tech_pvt);
-			switch_core_media_patch_sdp(tech_pvt->session);			
+			switch_core_media_patch_sdp(tech_pvt->session);
 			switch_core_media_proxy_remote_addr(tech_pvt->session, NULL);
 		}
 
@@ -1291,7 +1291,7 @@ static switch_status_t sofia_send_dtmf(switch_core_session_t *session, const swi
 	switch_assert(tech_pvt != NULL);
 
 	switch_core_media_check_dtmf_type(session);
-	
+
 	dtmf_type = tech_pvt->mparams.dtmf_type;
 
 	/* We only can send INFO when we have no media */
@@ -1336,6 +1336,8 @@ static switch_status_t sofia_receive_message(switch_core_session_t *session, swi
 	switch_status_t status = SWITCH_STATUS_SUCCESS;
 
 	switch_assert(tech_pvt != NULL);
+
+	switch_core_session_lock_codec_write(session);
 
 	if (msg->message_id == SWITCH_MESSAGE_INDICATE_SIGNAL_DATA) {
 		sofia_dispatch_event_t *de = (sofia_dispatch_event_t *) msg->pointer_arg;
@@ -1838,7 +1840,7 @@ static switch_status_t sofia_receive_message(switch_core_session_t *session, swi
 				full_to = switch_str_nil(switch_channel_get_variable(channel, "sip_full_to"));
 				nua_notify(tech_pvt->nh, NUTAG_NEWSUB(1), NUTAG_SUBSTATE(nua_substate_active),
 						   TAG_IF((full_to), SIPTAG_TO_STR(full_to)),SIPTAG_SUBSCRIPTION_STATE_STR("active"),
-						   SIPTAG_EVENT_STR(event), 
+						   SIPTAG_EVENT_STR(event),
 						   TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),
 						   TAG_END());
 			}
@@ -1969,8 +1971,8 @@ static switch_status_t sofia_receive_message(switch_core_session_t *session, swi
 				ref_to = switch_mprintf("<sip:%s@%s?Replaces=%s>", to_user, to_host, out);
 				ref_by = switch_mprintf("<sip:%s@%s>", from_user, from_host);
 
-				nua_refer(tech_pvt->nh, SIPTAG_REFER_TO_STR(ref_to), SIPTAG_REFERRED_BY_STR(ref_by), 
-						TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)), 
+				nua_refer(tech_pvt->nh, SIPTAG_REFER_TO_STR(ref_to), SIPTAG_REFERRED_BY_STR(ref_by),
+						TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),
 						TAG_END());
 				switch_safe_free(ref_to);
 				switch_safe_free(ref_by);
@@ -2257,7 +2259,7 @@ static switch_status_t sofia_receive_message(switch_core_session_t *session, swi
 
 				switch_core_session_local_crypto_key(tech_pvt->session, SWITCH_MEDIA_TYPE_AUDIO);
 				switch_core_media_gen_local_sdp(session, SDP_TYPE_RESPONSE, NULL, 0, NULL, 0);
-						
+
 				if (sofia_use_soa(tech_pvt)) {
 					nua_respond(tech_pvt->nh, SIP_200_OK,
 								SIPTAG_CONTACT_STR(tech_pvt->reply_contact),
@@ -2708,6 +2710,8 @@ static switch_status_t sofia_receive_message(switch_core_session_t *session, swi
 	switch_mutex_unlock(tech_pvt->sofia_mutex);
 
   end:
+
+	switch_core_session_unlock_codec_write(session);
 
 	if (switch_channel_down(channel) || sofia_test_flag(tech_pvt, TFLAG_BYE)) {
 		status = SWITCH_STATUS_FALSE;
@@ -5267,7 +5271,7 @@ static int notify_csta_callback(void *pArg, int argc, char **argv, char **column
 
 	nua_notify(nh, NUTAG_NEWSUB(1),
 			   TAG_IF(dst->route_uri, NUTAG_PROXY(route_uri)), TAG_IF(dst->route, SIPTAG_ROUTE_STR(dst->route)), TAG_IF(call_id, SIPTAG_CALL_ID_STR(call_id)),
-			   SIPTAG_EVENT_STR("as-feature-event"), SIPTAG_CONTENT_TYPE_STR(ct), TAG_IF(!zstr(extra_headers), SIPTAG_HEADER_STR(extra_headers)), TAG_IF(!zstr(body), SIPTAG_PAYLOAD_STR(body)), SIPTAG_CSEQ(cseq), 
+			   SIPTAG_EVENT_STR("as-feature-event"), SIPTAG_CONTENT_TYPE_STR(ct), TAG_IF(!zstr(extra_headers), SIPTAG_HEADER_STR(extra_headers)), TAG_IF(!zstr(body), SIPTAG_PAYLOAD_STR(body)), SIPTAG_CSEQ(cseq),
 			   TAG_END());
 
 
@@ -5419,7 +5423,7 @@ void general_event_handler(switch_event_t *event)
 							   NUTAG_NEWSUB(1), TAG_IF(sip_sub_st, SIPTAG_SUBSCRIPTION_STATE_STR(sip_sub_st)),
 							   TAG_IF(dst->route_uri, NUTAG_PROXY(dst->route_uri)), TAG_IF(dst->route, SIPTAG_ROUTE_STR(dst->route)), TAG_IF(call_id, SIPTAG_CALL_ID_STR(call_id)),
 							   SIPTAG_EVENT_STR(es), SIPTAG_CONTENT_TYPE_STR(ct), TAG_IF(!zstr(body), SIPTAG_PAYLOAD_STR(body)),
-							   TAG_IF(!zstr(extra_headers), SIPTAG_HEADER_STR(extra_headers)), 
+							   TAG_IF(!zstr(extra_headers), SIPTAG_HEADER_STR(extra_headers)),
 							   TAG_END());
 
 					switch_safe_free(route_uri);
@@ -6895,8 +6899,8 @@ void mod_sofia_shutdown_cleanup(void) {
 
 	su_deinit();
 
-	/* 
-		Release the clone of the default SIP parser 
+	/*
+		Release the clone of the default SIP parser
 		created by `sip_update_default_mclass(sip_extend_mclass(NULL))` call with NULL argument
 	*/
 	sip_cloned_parser_destroy();
