@@ -89,7 +89,13 @@ pipeline {
                             /kaniko/executor --context `pwd` \
                                 --build-arg SIGNALWIRE_TOKEN=$SIGNALWIRE_TOKEN \
                                 --dockerfile=libon/docker/Dockerfile \
-                                --destination=europe-west1-docker.pkg.dev/libon-build/images/freeswitch:${env.FS_VERSION}
+                                --registry-map="index.docker.io=europe-west1-docker.pkg.dev/libon-build/docker-hub" \
+                                --skip-default-registry-fallback \
+                                --destination=europe-west1-docker.pkg.dev/libon-build/images/freeswitch:${env.FS_VERSION} \
+                                --image-fs-extract-retry=3 \
+                                --push-retry=3 \
+                                --cleanup \
+                                --snapshot-mode=redo
                             """
                         }
                     }
