@@ -65,10 +65,23 @@ pipeline {
                         make && make install && make sounds-install && make moh-install
 
                         tar -zcvf freeswitch.tar.gz /opt/freeswitch
+                        
+                        OLDDIR=`pwd`
+                        # opus 1.5.2 compilation
+                        git clone  https://github.com/xiph/opus.git
+                        cd opus
+                        
+                        git checkout v1.5.2
+                        ./autogen.sh
+                        ./configure --prefix=/tmp/opus 
+                        make && make install
+                        cd /tmp/opus
+                        cp lib/libopus.so.0.10.1 \$OLDDIR
                     """
                     env.FS_VERSION = sh(returnStdout: true, script: "cat version").trim()
                 }
                 stash(name: "freeswitch_bin", includes: "freeswitch.tar.gz")
+                stash(name: "opus", includes: "libopus.so.0.10.1")
                 milestone ordinal: 20, label: 'Building FreeSWITCH'
             }
         }
@@ -83,6 +96,7 @@ pipeline {
                 withCredentials([string(credentialsId: 'SIGNALWIRE_TOKEN', variable: 'SIGNALWIRE_TOKEN')]) {
                     unstash(name: "mod_prometheus")
                     unstash(name: "freeswitch_bin")
+                    unstash(name: "opus")
                     container(name:"kaniko", shell: '/busybox/sh') {
                         withEnv(['PATH+EXTRA=/busybox:/kaniko']) {
                             sh """#!/busybox/sh
