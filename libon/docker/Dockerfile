@@ -14,4 +14,8 @@ RUN apt-get update && apt-get install -y libfreetype6 liblua5.3-0 libodbc2 libop
 COPY freeswitch*.tar.gz /tmp/
 RUN tar -zxvf /tmp/freeswitch*.tar.gz -C /
 
+# copy the opus v1.5.2 lib and create the needed symlinks
+COPY libopus.so.0.10.1 /usr/lib/x86_64-linux-gnu/
+RUN cd /usr/lib/x86_64-linux-gnu/ && rm -f libopus.so.0 libopus.so && ln -s libopus.so.0.10.1 libopus.so && ln -s libopus.so.0.10.1 libopus.so.0
+
 COPY mod_prometheus.so /opt/freeswitch/lib/freeswitch/mod/mod_prometheus.so
