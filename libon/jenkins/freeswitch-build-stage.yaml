@@ -3,7 +3,7 @@ kind: Pod
 spec:
   containers:
     - name: build
-      image: europe-west1-docker.pkg.dev/libon-build/images/freeswitch-build-tools:1.0
+      image: europe-west1-docker.pkg.dev/libon-build/images/freeswitch-build-tools:build-nexus_repo-17
       command:
         - cat
       tty: true
