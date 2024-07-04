@@ -80,25 +80,31 @@ pipeline {
                 }
             }
             steps {
-                withCredentials([string(credentialsId: 'SIGNALWIRE_TOKEN', variable: 'SIGNALWIRE_TOKEN')]) {
-                    unstash(name: "mod_prometheus")
-                    unstash(name: "freeswitch_bin")
-                    container(name:"kaniko", shell: '/busybox/sh') {
-                        withEnv(['PATH+EXTRA=/busybox:/kaniko']) {
-                            sh """#!/busybox/sh
-                            /kaniko/executor --context `pwd` \
-                                --build-arg SIGNALWIRE_TOKEN=$SIGNALWIRE_TOKEN \
-                                --dockerfile=libon/docker/Dockerfile \
-                                --registry-map="index.docker.io=europe-west1-docker.pkg.dev/libon-build/docker-hub" \
-                                --skip-default-registry-fallback \
-                                --destination=europe-west1-docker.pkg.dev/libon-build/images/freeswitch:${env.FS_VERSION} \
-                                --image-fs-extract-retry=3 \
-                                --push-retry=3 \
-                                --cleanup \
-                                --snapshot-mode=redo
-                            """
+                withCredentials(bindings: [
+                    usernamePassword(
+                        credentialsId: 'NEXUS_CREDENTIALS',
+                        passwordVariable: 'NEXUS_PASSWORD',
+                        usernameVariable: 'NEXUS_USER'),
+                    ]) {
+                        unstash(name: "mod_prometheus")
+                        unstash(name: "freeswitch_bin")
+                        container(name:"kaniko", shell: '/busybox/sh') {
+                            withEnv(['PATH+EXTRA=/busybox:/kaniko']) {
+                                sh """#!/busybox/sh
+                                /kaniko/executor --context `pwd` \
+                                    --build-arg NEXUS_USER=$NEXUS_USER \
+                                    --build-arg NEXUS_PASSWORD=$NEXUS_PASSWORD \
+                                    --dockerfile=libon/docker/Dockerfile \
+                                    --registry-map="index.docker.io=europe-west1-docker.pkg.dev/libon-build/docker-hub" \
+                                    --skip-default-registry-fallback \
+                                    --destination=europe-west1-docker.pkg.dev/libon-build/images/freeswitch:${env.FS_VERSION} \
+                                    --image-fs-extract-retry=3 \
+                                    --push-retry=3 \
+                                    --cleanup \
+                                    --snapshot-mode=redo
+                                """
+                            }
                         }
-                    }
                 }
                 milestone ordinal: 30, label: 'Building image'
             }
