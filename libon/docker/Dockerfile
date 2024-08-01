@@ -4,6 +4,10 @@ FROM europe-west1-docker.pkg.dev/libon-build/docker-hub/debian:bookworm-20240408
 ARG NEXUS_USER
 ARG NEXUS_PASSWORD
 
+RUN apt update && apt install -y apt-transport-artifact-registry
+
+RUN echo "deb ar+https://europe-west1-apt.pkg.dev/projects/libon-build debian-bookworm main" | tee -a /etc/apt/sources.list.d/artifact-registry.list
+
 RUN apt update && apt install -y gnupg2 wget lsb-release 
 
 RUN echo "machine nexus.build.libon.com login $NEXUS_USER password $NEXUS_PASSWORD" > /etc/apt/auth.conf && chmod 600 /etc/apt/auth.conf
