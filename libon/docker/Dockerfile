@@ -1,5 +1,5 @@
 # freeswitch image
-FROM debian:bookworm-20240408
+FROM europe-west1-docker.pkg.dev/libon-build/docker-hub/debian:bookworm-20240408
 
 ARG NEXUS_USER
 ARG NEXUS_PASSWORD
