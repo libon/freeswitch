@@ -140,14 +140,16 @@ prep_create_orig () {
     set -e
 
     local OPTIND OPTARG
-    local uver="" hrev="" bundle_deps=true
+    local uver="" hrev="" bundle_deps=true soft_reset=false
 
-    while getopts 'bm:nv:z:' o "$@"; do
+    while getopts 'bm:nv:V:xz:' o "$@"; do
       case "$o" in
         b) ;;
         m) ;;
         n) uver="nightly";;
         v) uver="$OPTARG";;
+        V) uver="$OPTARG";;
+        x) soft_reset=true;;
         z) ;;
       esac
     done
@@ -161,8 +163,12 @@ prep_create_orig () {
     local treeish="$1"
     [ -n "$treeish" ] || treeish="HEAD"
 
-    check_repo_clean
-    git reset --hard "$treeish"
+    if $soft_reset; then
+      git reset --soft "$treeish"
+    else
+      check_repo_clean
+      git reset --hard "$treeish"
+    fi
 
     if $bundle_deps; then
       (cd libs && getlibs)
@@ -180,23 +186,34 @@ create_orig () {
     set -e
 
     local OPTIND OPTARG
-    local bundle_deps=true modules_list="" zl=9e
+    local bundle_deps=true modules_list="" soft_reset=false auto_orig=false zl=9e
 
     local uver="$(prep_create_orig "$@")"
 
-    while getopts 'bm:nv:z:' o "$@"; do
+    while getopts 'bm:nv:V:xz:' o "$@"; do
       case "$o" in
         b) ;;
         m) modules_list="$OPTARG";;
         n) ;;
         v) ;;
+        V) auto_orig=true;;
+        x) soft_reset=true;;
         z) zl="$OPTARG";;
       esac
     done
     shift $(($OPTIND-1))
 
-    local dver="$(mk_dver "$uver")"
-    local orig="../freeswitch_$dver~$(lsb_release -sc).orig.tar.xz"
+    local commit_epoch=$(git log -1 --format=%ct)
+    local source_date=$(date -u -d @$commit_epoch +'%Y-%m-%d %H:%M:%S')
+
+    local orig git_archive_prefix
+    if $auto_orig; then
+      orig="../freeswitch_$(debian/version-omit_revision.pl).orig.tar.xz"
+      git_archive_prefix="freeswitch/"
+    else
+      orig="../freeswitch_$(mk_dver "$uver")~$(lsb_release -sc).orig.tar.xz"
+      git_archive_prefix="freeswitch-$uver/"
+    fi
 
     mv .gitattributes .gitattributes.orig
 
@@ -214,16 +231,40 @@ create_orig () {
     git add -f configure.ac .version
     git commit --allow-empty -m "nightly v$uver"
 
+    local tmpsrcdir="$(mktemp -d)"
     git archive -v \
       --worktree-attributes \
       --format=tar \
-      --prefix=freeswitch-$uver/ \
-      HEAD \
-      | xz -c -${zl}v > $orig
+      --prefix=$git_archive_prefix \
+      HEAD | tar --extract --directory="$tmpsrcdir"
+
+    # https://www.gnu.org/software/tar/manual/html_section/Reproducibility.html
+    tar \
+      --sort=name \
+      --format=posix \
+      --pax-option='exthdr.name=%d/PaxHeaders/%f' \
+      --pax-option='delete=atime,delete=ctime' \
+      --clamp-mtime \
+      --mtime="$source_date" \
+      --numeric-owner \
+      --owner=0 \
+      --group=0 \
+      --mode='go+u,go-w' \
+      --create \
+      --directory="$tmpsrcdir" \
+      . | xz -v -c -${zl} > "$orig" && \
+    rm -rf "$tmpsrcdir"
+
+    echo "Source archive checksum:"
+    sha256sum $orig
 
     mv .gitattributes.orig .gitattributes
 
-    git reset --hard HEAD^ && git clean -fdx
+    if $soft_reset; then
+      git reset --soft HEAD^
+    else
+      git reset --hard HEAD^ && git clean -fdx
+    fi
   } 1>&2
   echo $orig
 }
@@ -292,9 +333,9 @@ create_dsc () {
 
     prep_create_dsc "$@"
 
-    local OPTIND OPTARG suite_postfix="" suite_postfix_p=false zl=9
+    local OPTIND OPTARG suite_postfix="" suite_postfix_p=false soft_reset=false zl=9
 
-    while getopts 'a:f:m:p:s:u:z:' o "$@"; do
+    while getopts 'a:f:m:p:s:u:xz:' o "$@"; do
       case "$o" in
         a) ;;
         f) ;;
@@ -302,6 +343,7 @@ create_dsc () {
         p) ;;
         s) ;;
         u) suite_postfix="$OPTARG"; suite_postfix_p=true;;
+        x) soft_reset=true;;
         z) zl="$OPTARG";;
       esac
     done
@@ -328,7 +370,11 @@ create_dsc () {
 
     local dsc="../$(dsc_base).dsc"
 
-    git reset --hard HEAD^ && git clean -fdx
+    if $soft_reset; then
+      git reset --soft HEAD^
+    else
+      git reset --hard HEAD^ && git clean -fdx
+    fi
   } 1>&2
   echo $dsc
 }
@@ -686,6 +732,7 @@ commands:
       Set FS bootstrap/build -j flags
     -u <suite-postfix>
       Specify a custom suite postfix
+    -x Use git soft reset instead of hard reset
     -z Set compression level
 
   create-orig <treeish> (same for 'prep_create_orig')
@@ -694,6 +741,8 @@ commands:
       Choose custom list of modules to build
     -n Nightly build
     -v Set version
+    -V Set version (without replacing every '-' to '~')
+    -x Use git soft reset instead of hard reset
     -z Set compression level
 
 EOF
