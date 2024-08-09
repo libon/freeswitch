@@ -1291,7 +1291,7 @@ static switch_status_t sofia_send_dtmf(switch_core_session_t *session, const swi
 	switch_assert(tech_pvt != NULL);
 
 	switch_core_media_check_dtmf_type(session);
-
+	
 	dtmf_type = tech_pvt->mparams.dtmf_type;
 
 	/* We only can send INFO when we have no media */
