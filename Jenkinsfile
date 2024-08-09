@@ -53,12 +53,16 @@ pipeline {
                         else
                             FS_VERSION=`git describe --tags`
                         fi
-                        
+
                         echo -n \$FS_VERSION > version
-                        
+
                         git config --global --add safe.directory `pwd`
 
                         ./bootstrap.sh -j
+
+						cp build/modules.conf.in modules.conf
+
+						echo "applications/mod_esl" >> modules.conf
 
                         ./configure --prefix=/opt/freeswitch
 
