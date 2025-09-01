@@ -63,6 +63,7 @@ pipeline {
 						cp build/modules.conf.in modules.conf
 
 						echo "applications/mod_esl" >> modules.conf
+						echo "formats/mod_shout" >> modules.conf
 
                         ./configure --prefix=/opt/freeswitch
 
