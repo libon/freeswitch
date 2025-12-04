@@ -10,7 +10,7 @@ RUN echo "machine nexus.build.libon.com login $NEXUS_USER password $NEXUS_PASSWO
 RUN echo "deb [trusted=yes] https://nexus.build.libon.com/repository/signalwire-bookworm bookworm main" > /etc/apt/sources.list.d/freeswitch-mirror.list
 
 RUN apt-get update && apt-get install -y libfreetype6 liblua5.3-0 libodbc2 libopus0 libpcre3 libsndfile1 libsofia-sip-ua0 libspandsp3 libspeexdsp1 libtpl0 lua5.3 speex \
-                                         curl dnsutils gettext-base net-tools procps sngrep tcpdump tree vim
+                                         curl dnsutils gettext-base httpie jq lua-socket lua-json lua-sec net-tools ngrep procps sngrep tcpdump tree vim
 COPY freeswitch*.tar.gz /tmp/
 RUN tar -zxvf /tmp/freeswitch*.tar.gz -C /
 
