@@ -713,7 +713,7 @@ void sofia_handle_sip_i_notify(switch_core_session_t *session, int status,
 				nua_notify(other_tech_pvt->nh, NUTAG_NEWSUB(1), NUTAG_SUBSTATE(nua_substate_active),
 							TAG_IF((full_to), SIPTAG_TO_STR(full_to)), SIPTAG_SUBSCRIPTION_STATE_STR("active"),
 							SIPTAG_EVENT_STR(sip->sip_event->o_type), TAG_IF(!zstr(unknown), SIPTAG_HEADER_STR(unknown)),
-							TAG_IF(!zstr(pl), SIPTAG_PAYLOAD_STR(pl)), 
+							TAG_IF(!zstr(pl), SIPTAG_PAYLOAD_STR(pl)),
 							TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),
 							TAG_END());
 				switch_safe_free(unknown);
@@ -2460,12 +2460,20 @@ void sofia_event_callback(nua_event_t event,
 		}
 
 		if (!sofia_private) {
-			if (sess_count >= sess_max || !sofia_test_pflag(profile, PFLAG_RUNNING) || !switch_core_ready_inbound()) {
-				nua_respond(nh, 503, "Maximum Calls In Progress", SIPTAG_RETRY_AFTER_STR("300"), NUTAG_WITH_THIS(nua), TAG_END());
-				nua_handle_destroy(nh);
-				goto end;
+			/* patch from this PR https://github.com/signalwire/freeswitch/pull/2980 */
+			if (event == nua_i_options) {
+				if (sofia_test_pflag(profile, PFLAG_OPTIONS_RESPOND_503_ON_BUSY) && (sess_count >= sess_max || !sofia_test_pflag(profile, PFLAG_RUNNING) || !switch_core_ready_inbound())) {
+					nua_respond(nh, 503, "Maximum Calls In Progress", SIPTAG_RETRY_AFTER_STR("300"), NUTAG_WITH_THIS(nua), TAG_END());
+					nua_handle_destroy(nh);
+					goto end;
+				}
+			} else {
+				if (sess_count >= sess_max || !sofia_test_pflag(profile, PFLAG_RUNNING) || !switch_core_ready_inbound()) {
+					nua_respond(nh, 503, "Maximum Calls In Progress", SIPTAG_RETRY_AFTER_STR("300"), NUTAG_WITH_THIS(nua), TAG_END());
+					nua_handle_destroy(nh);
+					goto end;
+				}
 			}
-
 
 			if (switch_queue_size(mod_sofia_globals.msg_queue) > (unsigned int)critical) {
 				nua_respond(nh, 503, "System Busy", SIPTAG_RETRY_AFTER_STR("300"), NUTAG_WITH_THIS(nua), TAG_END());
@@ -3233,7 +3241,7 @@ void *SWITCH_THREAD_FUNC sofia_profile_thread_run(switch_thread_t *thread, void 
 								  NTATAG_TCP_RPORT(0),
 								  NTATAG_TLS_RPORT(0),
 #ifdef NTATAG_TLS_ORQ_CONNECT_TIMEOUT
-								  TAG_IF(profile->tls_orq_connect_timeout, 
+								  TAG_IF(profile->tls_orq_connect_timeout,
 										 NTATAG_TLS_ORQ_CONNECT_TIMEOUT(profile->tls_orq_connect_timeout)), /* Profile based timeout */
 #endif
 								  NUTAG_RETRY_AFTER_ENABLE(0),
@@ -3951,10 +3959,10 @@ static void parse_gateways(sofia_profile_t *profile, switch_xml_t gateways_tag, 
 					contact_host = val;
 				} else if (!strcmp(var, "register-proxy")) {
 					register_proxy = val;
-					gateway->register_proxy_host_cfg = sofia_glue_get_host_from_cfg(register_proxy, gateway->pool); 
+					gateway->register_proxy_host_cfg = sofia_glue_get_host_from_cfg(register_proxy, gateway->pool);
 				} else if (!strcmp(var, "outbound-proxy")) {
 					outbound_proxy = val;
-					gateway->outbound_proxy_host_cfg = sofia_glue_get_host_from_cfg(outbound_proxy, gateway->pool); 
+					gateway->outbound_proxy_host_cfg = sofia_glue_get_host_from_cfg(outbound_proxy, gateway->pool);
 				} else if (!strcmp(var, "distinct-to")) {
 					distinct_to = switch_true(val);
 				} else if (!strcmp(var, "destination-prefix")) {
@@ -4127,7 +4135,7 @@ static void parse_gateways(sofia_profile_t *profile, switch_xml_t gateways_tag, 
 					gateway->options_from_uri = gateway->options_to_uri;
 					if (contact_in_ping) {
 						gateway->contact_in_ping = contact_in_ping;
-					}	
+					}
 				} else {
 					switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "ERROR: invalid ping!\n");
 				}
@@ -5326,14 +5334,14 @@ switch_status_t config_sofia(sofia_config_t reload, char *profile_name)
 						if (v >= 0) {
 							profile->rtp_timeout_sec = v;
 							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING,
-											  "rtp-timeout-sec deprecated use media_timeout variable.\n"); 
+											  "rtp-timeout-sec deprecated use media_timeout variable.\n");
 						}
 					} else if (!strcasecmp(var, "rtp-hold-timeout-sec") && !zstr(val)) {
 						int v = atoi(val);
 						if (v >= 0) {
 							profile->rtp_hold_timeout_sec = v;
 							switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING,
-											  "rtp-hold-timeout-sec deprecated use media_hold_timeout variable.\n"); 
+											  "rtp-hold-timeout-sec deprecated use media_hold_timeout variable.\n");
 						}
 					} else if (!strcasecmp(var, "disable-transfer")) {
 						if (switch_true(val)) {
@@ -7672,7 +7680,7 @@ static void sofia_handle_sip_i_state(switch_core_session_t *session, int status,
 					switch_channel_set_variable(channel, SWITCH_ENDPOINT_DISPOSITION_VARIABLE, "PROXY MEDIA");
 					switch_core_media_patch_sdp(tech_pvt->session);
 					if (sofia_media_activate_rtp(tech_pvt) != SWITCH_STATUS_SUCCESS) {
-						nua_respond(nh, SIP_488_NOT_ACCEPTABLE, 
+						nua_respond(nh, SIP_488_NOT_ACCEPTABLE,
 								TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)), TAG_END());
 						switch_channel_hangup(channel, SWITCH_CAUSE_INCOMPATIBLE_DESTINATION);
 					} else{
@@ -7682,7 +7690,7 @@ static void sofia_handle_sip_i_state(switch_core_session_t *session, int status,
 				} else {
 					if (sofia_media_tech_media(tech_pvt, (char *) r_sdp, SDP_OFFER) != SWITCH_STATUS_SUCCESS) {
 						switch_channel_set_variable(channel, SWITCH_ENDPOINT_DISPOSITION_VARIABLE, "CODEC NEGOTIATION ERROR");
-						nua_respond(nh, SIP_488_NOT_ACCEPTABLE, 
+						nua_respond(nh, SIP_488_NOT_ACCEPTABLE,
 								TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),TAG_END());
 						switch_channel_hangup(channel, SWITCH_CAUSE_INCOMPATIBLE_DESTINATION);
 					}
@@ -7747,14 +7755,14 @@ static void sofia_handle_sip_i_state(switch_core_session_t *session, int status,
 										TAG_IF(r_sdp, SIPTAG_CONTENT_TYPE_STR("application/sdp")),
 										TAG_IF(r_sdp, SIPTAG_PAYLOAD_STR(r_sdp)),
 										SOATAG_AUDIO_AUX("cn telephone-event"),
-										TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)), 
+										TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),
 										TAG_END());
 							}
 
 							nua_ack(tech_pvt->nh,
 									TAG_IF(!zstr(tech_pvt->user_via), SIPTAG_VIA_STR(tech_pvt->user_via)),
 									SIPTAG_CONTACT_STR(tech_pvt->reply_contact),
-									TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)), 
+									TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),
 									TAG_END());
 
 						}
@@ -7781,7 +7789,7 @@ static void sofia_handle_sip_i_state(switch_core_session_t *session, int status,
 
 				if (!match) {
 					if (switch_channel_get_state(channel) != CS_NEW) {
-						nua_respond(tech_pvt->nh, SIP_488_NOT_ACCEPTABLE, 
+						nua_respond(tech_pvt->nh, SIP_488_NOT_ACCEPTABLE,
 								TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),TAG_END());
 					}
 				} else {
@@ -7876,7 +7884,7 @@ static void sofia_handle_sip_i_state(switch_core_session_t *session, int status,
 					switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG,
 									  "Other leg already handling a reinvite, so responding with 491\n");
 
-					nua_respond(tech_pvt->nh, SIP_491_REQUEST_PENDING, 
+					nua_respond(tech_pvt->nh, SIP_491_REQUEST_PENDING,
 							TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)), TAG_END());
 					sofia_glue_do_invite(session);
 					goto done;
@@ -8257,7 +8265,7 @@ static void sofia_handle_sip_i_state(switch_core_session_t *session, int status,
 						if (sofia_test_flag(other_tech_pvt, TFLAG_REINVITED)) {
 							/* The other leg won the reinvite race */
 							switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Other leg already handling reinvite, so responding with 491\n");
-							nua_respond(tech_pvt->nh, SIP_491_REQUEST_PENDING, 
+							nua_respond(tech_pvt->nh, SIP_491_REQUEST_PENDING,
 									TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)), TAG_END());
 							switch_core_session_rwunlock(other_session);
 							goto done;
@@ -8824,7 +8832,7 @@ void *SWITCH_THREAD_FUNC nightmare_xfer_thread_run(switch_thread_t *thread, void
 			nua_notify(tech_pvt->nh, NUTAG_NEWSUB(1), SIPTAG_CONTENT_TYPE_STR("message/sipfrag"),
 					   NUTAG_SUBSTATE(nua_substate_terminated),SIPTAG_SUBSCRIPTION_STATE_STR("terminated;reason=noresource"),
 					   SIPTAG_PAYLOAD_STR(status == SWITCH_STATUS_SUCCESS ? "SIP/2.0 200 OK\r\n" :
-										  "SIP/2.0 403 Forbidden\r\n"), SIPTAG_EVENT_STR(nhelper->event), 
+										  "SIP/2.0 403 Forbidden\r\n"), SIPTAG_EVENT_STR(nhelper->event),
 					   TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),
 					   TAG_END());
 
@@ -8986,7 +8994,7 @@ void sofia_handle_sip_i_refer(nua_t *nua, sofia_profile_t *profile, nua_handle_t
 	from = sip->sip_from;
 	//to = sip->sip_to;
 
-	nua_respond(nh, SIP_202_ACCEPTED, NUTAG_WITH_THIS_MSG(de->data->e_msg), SIPTAG_EXPIRES_STR("60"), 
+	nua_respond(nh, SIP_202_ACCEPTED, NUTAG_WITH_THIS_MSG(de->data->e_msg), SIPTAG_EXPIRES_STR("60"),
 			TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)), TAG_END());
 
 
@@ -9226,7 +9234,7 @@ void sofia_handle_sip_i_refer(nua_t *nua, sofia_profile_t *profile, nua_handle_t
 								nua_bye(b_tech_pvt->nh,
 										SIPTAG_CONTACT(SIP_NONE),
 										TAG_IF(!zstr(q850), SIPTAG_REASON_STR(q850)),
-										TAG_IF(!zstr(tech_pvt->user_via), SIPTAG_VIA_STR(tech_pvt->user_via)), 
+										TAG_IF(!zstr(tech_pvt->user_via), SIPTAG_VIA_STR(tech_pvt->user_via)),
 										TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),
 										TAG_END());
 
@@ -9234,7 +9242,7 @@ void sofia_handle_sip_i_refer(nua_t *nua, sofia_profile_t *profile, nua_handle_t
 						} else {
 							nua_notify(tech_pvt->nh, NUTAG_NEWSUB(1), SIPTAG_CONTENT_TYPE_STR("message/sipfrag;version=2.0"),
 									   NUTAG_SUBSTATE(nua_substate_terminated),SIPTAG_SUBSCRIPTION_STATE_STR("terminated;reason=noresource"),
-									   SIPTAG_PAYLOAD_STR("SIP/2.0 403 Forbidden\r\n"), SIPTAG_EVENT_STR(etmp), 
+									   SIPTAG_PAYLOAD_STR("SIP/2.0 403 Forbidden\r\n"), SIPTAG_EVENT_STR(etmp),
 									   TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),
 									   TAG_END());
 						}
@@ -9331,7 +9339,7 @@ void sofia_handle_sip_i_refer(nua_t *nua, sofia_profile_t *profile, nua_handle_t
 											  "Cannot transfer channels that are not in a bridge.\n");
 							nua_notify(tech_pvt->nh, NUTAG_NEWSUB(1), SIPTAG_CONTENT_TYPE_STR("message/sipfrag;version=2.0"),
 									   NUTAG_SUBSTATE(nua_substate_terminated),SIPTAG_SUBSCRIPTION_STATE_STR("terminated;reason=noresource"), SIPTAG_PAYLOAD_STR("SIP/2.0 403 Forbidden\r\n"),
-									   SIPTAG_EVENT_STR(etmp), 
+									   SIPTAG_EVENT_STR(etmp),
 									   TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),
 									   TAG_END());
 						} else {
@@ -9399,7 +9407,7 @@ void sofia_handle_sip_i_refer(nua_t *nua, sofia_profile_t *profile, nua_handle_t
 										   NUTAG_NEWSUB(1),
 										   SIPTAG_CONTENT_TYPE_STR("message/sipfrag;version=2.0"),
 										   NUTAG_SUBSTATE(nua_substate_terminated),SIPTAG_SUBSCRIPTION_STATE_STR("terminated;reason=noresource"),
-										   SIPTAG_PAYLOAD_STR("SIP/2.0 200 OK\r\n"), SIPTAG_EVENT_STR(etmp), 
+										   SIPTAG_PAYLOAD_STR("SIP/2.0 200 OK\r\n"), SIPTAG_EVENT_STR(etmp),
 										   TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),
 										   TAG_END());
 								switch_core_session_rwunlock(t_session);
@@ -9408,7 +9416,7 @@ void sofia_handle_sip_i_refer(nua_t *nua, sofia_profile_t *profile, nua_handle_t
 								switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Session to transfer to not found.\n");
 								nua_notify(tech_pvt->nh, NUTAG_NEWSUB(1), SIPTAG_CONTENT_TYPE_STR("message/sipfrag;version=2.0"),
 										   NUTAG_SUBSTATE(nua_substate_terminated),SIPTAG_SUBSCRIPTION_STATE_STR("terminated;reason=noresource"),
-										   SIPTAG_PAYLOAD_STR("SIP/2.0 403 Forbidden\r\n"), SIPTAG_EVENT_STR(etmp), 
+										   SIPTAG_PAYLOAD_STR("SIP/2.0 403 Forbidden\r\n"), SIPTAG_EVENT_STR(etmp),
 										   TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),
 										   TAG_END());
 							}
@@ -9657,7 +9665,7 @@ void sofia_handle_sip_i_refer(nua_t *nua, sofia_profile_t *profile, nua_handle_t
 				nua_notify(tech_pvt->nh, NUTAG_NEWSUB(1), SIPTAG_CONTENT_TYPE_STR("message/sipfrag;version=2.0"),
 						   NUTAG_SUBSTATE(nua_substate_terminated),
 						   SIPTAG_SUBSCRIPTION_STATE_STR("terminated;reason=noresource"),
-						   SIPTAG_PAYLOAD_STR("SIP/2.0 200 OK\r\n"), SIPTAG_EVENT_STR(etmp), 
+						   SIPTAG_PAYLOAD_STR("SIP/2.0 200 OK\r\n"), SIPTAG_EVENT_STR(etmp),
 						   TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),
 						   TAG_END());
 			}
@@ -9696,7 +9704,7 @@ void sofia_handle_sip_i_refer(nua_t *nua, sofia_profile_t *profile, nua_handle_t
 			nua_notify(tech_pvt->nh, NUTAG_NEWSUB(1), SIPTAG_CONTENT_TYPE_STR("message/sipfrag;version=2.0"),
 					   NUTAG_SUBSTATE(nua_substate_terminated),
 					   SIPTAG_SUBSCRIPTION_STATE_STR("terminated;reason=noresource"),
-					   SIPTAG_PAYLOAD_STR("SIP/2.0 403 Forbidden\r\n"), SIPTAG_EVENT_STR(etmp), 
+					   SIPTAG_PAYLOAD_STR("SIP/2.0 403 Forbidden\r\n"), SIPTAG_EVENT_STR(etmp),
 					   TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),
 					   TAG_END());
 		}
@@ -9914,7 +9922,7 @@ void sofia_handle_sip_i_info(nua_t *nua, sofia_profile_t *profile, nua_handle_t 
 
 					} else {
 						nua_respond(nh, SIP_200_OK, SIPTAG_CONTENT_TYPE_STR("freeswitch/session-event-response"),
-									SIPTAG_PAYLOAD_STR("-ERR INVALID SESSION"), NUTAG_WITH_THIS_MSG(de->data->e_msg), 
+									SIPTAG_PAYLOAD_STR("-ERR INVALID SESSION"), NUTAG_WITH_THIS_MSG(de->data->e_msg),
 									TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),
 									TAG_END());
 
@@ -9937,13 +9945,13 @@ void sofia_handle_sip_i_info(nua_t *nua, sofia_profile_t *profile, nua_handle_t 
 
 					if (switch_api_execute(cmd, arg, NULL, &stream) == SWITCH_STATUS_SUCCESS) {
 						nua_respond(nh, SIP_200_OK, SIPTAG_CONTENT_TYPE_STR("freeswitch/api-response"),
-									SIPTAG_PAYLOAD_STR(stream.data), NUTAG_WITH_THIS_MSG(de->data->e_msg), 
+									SIPTAG_PAYLOAD_STR(stream.data), NUTAG_WITH_THIS_MSG(de->data->e_msg),
 									TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),
 									TAG_END());
 					} else {
 
 						nua_respond(nh, SIP_200_OK, SIPTAG_CONTENT_TYPE_STR("freeswitch/api-response"),
-									SIPTAG_PAYLOAD_STR("-ERR INVALID COMMAND"), NUTAG_WITH_THIS_MSG(de->data->e_msg), 
+									SIPTAG_PAYLOAD_STR("-ERR INVALID COMMAND"), NUTAG_WITH_THIS_MSG(de->data->e_msg),
 									TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),
 									TAG_END());
 					}
@@ -9953,7 +9961,7 @@ void sofia_handle_sip_i_info(nua_t *nua, sofia_profile_t *profile, nua_handle_t 
 					return;
 				}
 
-				nua_respond(nh, SIP_200_OK, NUTAG_WITH_THIS_MSG(de->data->e_msg), 
+				nua_respond(nh, SIP_200_OK, NUTAG_WITH_THIS_MSG(de->data->e_msg),
 						TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),
 						TAG_END());
 
@@ -10139,7 +10147,7 @@ void sofia_handle_sip_i_info(nua_t *nua, sofia_profile_t *profile, nua_handle_t 
 					}
 
 					/* Send 200 OK response */
-					nua_respond(nh, SIP_200_OK, NUTAG_WITH_THIS_MSG(de->data->e_msg), 
+					nua_respond(nh, SIP_200_OK, NUTAG_WITH_THIS_MSG(de->data->e_msg),
 							TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),
 							TAG_END());
 				} else {
@@ -10154,7 +10162,7 @@ void sofia_handle_sip_i_info(nua_t *nua, sofia_profile_t *profile, nua_handle_t 
 			if (!zstr(clientcode_header)) {
 				switch_channel_set_variable(channel, "call_clientcode", clientcode_header);
 				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_NOTICE, "Setting CMC to %s\n", clientcode_header);
-				nua_respond(nh, SIP_200_OK, NUTAG_WITH_THIS_MSG(de->data->e_msg), 
+				nua_respond(nh, SIP_200_OK, NUTAG_WITH_THIS_MSG(de->data->e_msg),
 						TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),
 						TAG_END());
 			}
@@ -10164,7 +10172,7 @@ void sofia_handle_sip_i_info(nua_t *nua, sofia_profile_t *profile, nua_handle_t 
 		if ((rec_header = sofia_glue_get_unknown_header(sip, "record"))) {
 			if (zstr(profile->record_template)) {
 				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_WARNING, "Record attempted but no template defined.\n");
-				nua_respond(nh, 488, "Recording not enabled", NUTAG_WITH_THIS_MSG(de->data->e_msg), 
+				nua_respond(nh, 488, "Recording not enabled", NUTAG_WITH_THIS_MSG(de->data->e_msg),
 						TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),
 						TAG_END());
 			} else {
@@ -10173,7 +10181,7 @@ void sofia_handle_sip_i_info(nua_t *nua, sofia_profile_t *profile, nua_handle_t 
 
 					if (switch_true(switch_channel_get_variable(channel, "sip_disable_recording"))) {
 						switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_WARNING, "Record attempted but is disabled by sip_disable_recording variable.\n");
-						nua_respond(nh, 488, "Recording disabled for this channel", NUTAG_WITH_THIS_MSG(de->data->e_msg), 
+						nua_respond(nh, 488, "Recording disabled for this channel", NUTAG_WITH_THIS_MSG(de->data->e_msg),
 								TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)), TAG_END());
 					} else {
 
@@ -10185,7 +10193,7 @@ void sofia_handle_sip_i_info(nua_t *nua, sofia_profile_t *profile, nua_handle_t 
 						switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_NOTICE, "Recording %s to %s\n", switch_channel_get_name(channel),
 								file);
 						switch_safe_free(tmp);
-						nua_respond(nh, SIP_200_OK, NUTAG_WITH_THIS_MSG(de->data->e_msg), 
+						nua_respond(nh, SIP_200_OK, NUTAG_WITH_THIS_MSG(de->data->e_msg),
 								TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),
 								TAG_END());
 						if (file != profile->record_template) {
@@ -10200,11 +10208,11 @@ void sofia_handle_sip_i_info(nua_t *nua, sofia_profile_t *profile, nua_handle_t 
 						switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_NOTICE, "Done recording %s to %s\n",
 										  switch_channel_get_name(channel), file);
 						switch_ivr_stop_record_session(session, file);
-						nua_respond(nh, SIP_200_OK, NUTAG_WITH_THIS_MSG(de->data->e_msg), 
+						nua_respond(nh, SIP_200_OK, NUTAG_WITH_THIS_MSG(de->data->e_msg),
 								TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),
 								TAG_END());
 					} else {
-						nua_respond(nh, 488, "Nothing to stop", NUTAG_WITH_THIS_MSG(de->data->e_msg), 
+						nua_respond(nh, 488, "Nothing to stop", NUTAG_WITH_THIS_MSG(de->data->e_msg),
 								TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),
 								TAG_END());
 					}
@@ -10223,7 +10231,7 @@ void sofia_handle_sip_i_info(nua_t *nua, sofia_profile_t *profile, nua_handle_t 
 		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG1, "dispatched freeswitch event for INFO\n");
 	}
 
-	nua_respond(nh, SIP_200_OK, NUTAG_WITH_THIS_MSG(de->data->e_msg), 
+	nua_respond(nh, SIP_200_OK, NUTAG_WITH_THIS_MSG(de->data->e_msg),
 			TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),
 			TAG_END());
 
@@ -11019,7 +11027,7 @@ void sofia_handle_sip_i_invite(switch_core_session_t *session, nua_t *nua, sofia
 			const char *ipv6;
 			const char *tmp, *at, *url = NULL;
 			const char *tmp_user = switch_channel_get_variable(channel, "sip_to_user");
-			
+
 			user = switch_core_session_url_encode(session, tmp_user);
 			host = switch_channel_get_variable(channel, "sip_to_host");
 
