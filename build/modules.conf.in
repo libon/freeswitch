@@ -1,5 +1,5 @@
 #applications/mod_abstraction
-applications/mod_av
+#applications/mod_av
 #applications/mod_avmd
 #applications/mod_bert
 #applications/mod_blacklist
@@ -7,7 +7,7 @@ applications/mod_av
 #applications/mod_cidlookup
 #applications/mod_cluechoo
 applications/mod_commands
-applications/mod_conference
+#applications/mod_conference
 #applications/mod_curl
 #applications/mod_cv
 applications/mod_db
@@ -60,7 +60,7 @@ applications/mod_voicemail
 #asr_tts/mod_flite
 #asr_tts/mod_pocketsphinx
 #asr_tts/mod_tts_commandline
-codecs/mod_amr
+#codecs/mod_amr
 #codecs/mod_amrwb
 codecs/mod_b64
 #codecs/mod_bv
