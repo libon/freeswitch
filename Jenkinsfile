@@ -90,6 +90,9 @@ pipeline {
                         credentialsId: 'NEXUS_CREDENTIALS',
                         passwordVariable: 'NEXUS_PASSWORD',
                         usernameVariable: 'NEXUS_USER'),
+                    string(
+                            credentialsId: 'SIGNALWIRE_TOKEN',
+                            variable: 'SIGNALWIRE_TOKEN')
                     ]) {
                         unstash(name: "mod_prometheus")
                         unstash(name: "freeswitch_bin")
@@ -99,6 +102,7 @@ pipeline {
                                 /kaniko/executor --context `pwd` \
                                     --build-arg NEXUS_USER=$NEXUS_USER \
                                     --build-arg NEXUS_PASSWORD=$NEXUS_PASSWORD \
+									--build-arg SIGNALWIRE_TOKEN=\$SIGNALWIRE_TOKEN \
                                     --dockerfile=libon/docker/Dockerfile \
                                     --registry-map="index.docker.io=europe-west1-docker.pkg.dev/libon-build/docker-hub" \
                                     --skip-default-registry-fallback \
