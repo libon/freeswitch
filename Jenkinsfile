@@ -6,7 +6,7 @@ pipeline {
         buildDiscarder(logRotator(artifactDaysToKeepStr: '20'))
     }
     parameters {
-        string(name: 'MOD_PROMETHEUS_VERSION', defaultValue: '0.8', description: 'mod_prometheus version to install')
+        string(name: 'MOD_PROMETHEUS_VERSION', defaultValue: '0.9', description: 'mod_prometheus version to install')
     }
     stages {
         stage('Build mod_prometheus') {
