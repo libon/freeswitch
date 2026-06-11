@@ -3,7 +3,7 @@ kind: Pod
 spec:
   containers:
     - name: rust
-      image: docker.io/library/rust:1.75-buster
+      image: docker.io/library/rust:1.96-bookworm
       command:
         - cat
       tty: true
