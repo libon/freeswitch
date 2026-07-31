@@ -85,18 +85,18 @@ pipeline {
                     unstash(name: "freeswitch_bin")
                     container(name:"kaniko", shell: '/busybox/sh') {
                         withEnv(['PATH+EXTRA=/busybox:/kaniko']) {
-                            sh """#!/busybox/sh
+                            sh '''#!/busybox/sh
                             /kaniko/executor --context `pwd` \
-                                --build-arg SIGNALWIRE_TOKEN=$SIGNALWIRE_TOKEN \
+                                --build-arg SIGNALWIRE_TOKEN="$SIGNALWIRE_TOKEN" \
                                 --dockerfile=libon/docker/Dockerfile \
                                 --registry-map="index.docker.io=europe-west1-docker.pkg.dev/libon-build/docker-hub" \
                                 --skip-default-registry-fallback \
-                                --destination=europe-west1-docker.pkg.dev/libon-build/images/freeswitch:${env.FS_VERSION} \
+                                --destination="europe-west1-docker.pkg.dev/libon-build/images/freeswitch:$FS_VERSION" \
                                 --image-fs-extract-retry=3 \
                                 --push-retry=3 \
                                 --cleanup \
                                 --snapshot-mode=redo
-                            """
+                            '''
                         }
                     }
                 }
