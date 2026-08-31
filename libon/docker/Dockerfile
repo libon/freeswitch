@@ -1,5 +1,5 @@
 # freeswitch image
-FROM debian:bookworm-20240408
+FROM debian:bookworm-20260824
 
 ARG SIGNALWIRE_TOKEN
 
