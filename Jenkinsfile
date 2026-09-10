@@ -78,7 +78,7 @@ pipeline {
                         
                         git checkout v1.5.2
                         ./autogen.sh
-                        ./configure --prefix=/tmp/opus 
+                        ./configure --prefix=/tmp/opus --enable-intrinsics --enable-float-approx CFLAGS="-O2 -ffast-math" X86_SSE4_1_CFLAGS="-msse4.1" X86_AVX2_CFLAGS="-mavx2 -mfma"
                         make && make install
                         cd /tmp/opus
                         cp lib/libopus.so.0.10.1 \$OLDDIR
