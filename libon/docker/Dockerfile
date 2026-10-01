@@ -13,5 +13,3 @@ RUN apt-get update && apt-get install -y libfreetype6 liblua5.3-0 libodbc2 libop
                                          curl dnsutils gettext-base httpie jq lua-socket lua-json lua-sec net-tools ngrep procps sngrep tcpdump tree vim linux-perf tmux
 COPY freeswitch*.tar.gz /tmp/
 RUN tar -zxvf /tmp/freeswitch*.tar.gz -C /
-
-COPY mod_prometheus.so /opt/freeswitch/lib/freeswitch/mod/mod_prometheus.so

@@ -5,34 +5,7 @@ pipeline {
         ansiColor('xterm')
         buildDiscarder(logRotator(artifactDaysToKeepStr: '20'))
     }
-    parameters {
-        string(name: 'MOD_PROMETHEUS_VERSION', defaultValue: '0.9', description: 'mod_prometheus version to install')
-    }
     stages {
-        stage('Build mod_prometheus') {
-            agent {
-                kubernetes {
-                    defaultContainer 'rust'
-                    yamlFile 'libon/jenkins/mod_prometheus-build-stage.yaml'
-                    yamlMergeStrategy([$class: 'org.csanchez.jenkins.plugins.kubernetes.pod.yaml.Merge'])
-                }
-            }
-            steps {
-                script {
-                    sh """
-                        git clone https://github.com/libon/mod_prometheus.git
-
-                        cd mod_prometheus && git checkout ${params.MOD_PROMETHEUS_VERSION}
-
-                        cargo build
-
-                        cp target/debug/libmod_prometheus.so ../mod_prometheus.so
-                    """
-                }
-                stash(name: "mod_prometheus", includes: "mod_prometheus.so")
-                milestone ordinal: 10, label: 'Building mod_prometheus'
-            }
-        }
         stage('Build freeswitch') {
             agent {
                 kubernetes {
@@ -86,7 +59,6 @@ pipeline {
             }
             steps {
                 withCredentials([string(credentialsId: 'SIGNALWIRE_TOKEN', variable: 'SIGNALWIRE_TOKEN')]) {
-                    unstash(name: "mod_prometheus")
                     unstash(name: "freeswitch_bin")
                     container(name:"kaniko", shell: '/busybox/sh') {
                         withEnv(['PATH+EXTRA=/busybox:/kaniko']) {
