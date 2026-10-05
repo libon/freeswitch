@@ -15,3 +15,7 @@ COPY freeswitch*.tar.gz /tmp/
 RUN tar -zxvf /tmp/freeswitch*.tar.gz -C /
 
 COPY mod_prometheus.so /opt/freeswitch/lib/freeswitch/mod/mod_prometheus.so
+
+# add sipexer for probing
+RUN curl -L https://github.com/miconda/sipexer/releases/download/v2.1.0/sipexer-v2.1.0-linux-amd64.tar.gz | tar xvzf - -C /tmp && \
+    mv /tmp/sipexer /usr/bin/
